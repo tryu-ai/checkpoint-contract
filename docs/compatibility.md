@@ -29,13 +29,23 @@ In the source checkout/archive and a Python 3.11.15 virtual environment with the
 core installed, on Linux CPU:
 
 ```sh
-python -m pip install -c requirements/constraints.txt torch==2.14.1 --index-url https://download.pytorch.org/whl/cpu
+python -m pip install --no-deps -c requirements/constraints.txt torch==2.14.1 --index-url https://download.pytorch.org/whl/cpu
 python -m pip install -r requirements/integration.txt
+python -m pip check
 python -I tools/integration_smoke.py
 ```
 
-The first command selects the official CPU wheel; the pin `2.14.1` accepts its
-`+cpu` local version. Other platforms may install the reference pins from their
+The first command installs only the official CPU wheel with `--no-deps`, because
+the CPU index lacks the project's pinned `filelock==4.0.9` dependency.
+The second command resolves dependencies from PyPI using the existing integration
+pins and constraints, against the installed CPU Torch. Under PEP 440,
+`torch==2.14.1` accepts `2.14.1+cpu`: a version specifier without a local suffix
+ignores the candidate's local suffix, so the installed CPU wheel satisfies the
+unchanged pin. After all installations, `pip check` fails on missing dependencies
+or installed versions that violate package dependency requirements, validating
+the dependencies deferred by `--no-deps` before the smoke check runs.
+
+Other platforms may install the reference pins from their
 usual official package index when suitable wheels are available. No framework
 data or weights are downloaded by examples or smoke checks. Dependency
 installation itself requires a package index or a preprovisioned wheel cache.
