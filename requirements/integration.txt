@@ -1,0 +1,6 @@
+# Direct pins for Python 3.11.15; install torch from the CPU index on Linux first.
+-c constraints.txt
+datasets==5.0.1
+pyarrow==25.0.1
+torch==2.14.1
+torchdata==0.11.0

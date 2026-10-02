@@ -1,0 +1,4 @@
+-c constraints.txt
+pytest==9.1.1
+jsonschema==4.26.0
+ruff==0.16.10

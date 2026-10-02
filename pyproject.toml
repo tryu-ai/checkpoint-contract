@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools==84.0.0", "wheel==0.48.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "checkpoint-contract"
+version = "0.1.0"
+description = "Bounded deterministic data-iterator resume-contract verification"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+hf-arrow = ["datasets", "pyarrow"]
+torchdata = ["torch", "torchdata"]
+
+[project.scripts]
+checkpoint-check = "checkpoint_contract.__main__:main"
+
+[tool.setuptools]
+include-package-data = false
+
+[tool.setuptools.package-data]
+checkpoint_contract = ["schemas/*.json"]
+
+[tool.setuptools.packages.find]
+include = ["checkpoint_contract*"]
+namespaces = false
+
+[tool.ruff]
+target-version = "py311"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]

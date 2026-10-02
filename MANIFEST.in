@@ -1,0 +1,17 @@
+include LICENSE README.md CHANGELOG.md CONTRIBUTING.md SECURITY.md
+include pyproject.toml MANIFEST.in .python-version .gitignore
+include .github/workflows/ci.yml
+recursive-include checkpoint_contract *.py *.json
+recursive-include docs *.md
+recursive-include examples *.py *.json
+recursive-include requirements *.txt
+recursive-include tools *.py
+recursive-include tests *.py
+prune build
+prune dist
+prune .git
+prune .venv
+prune artifacts
+prune reports
+global-exclude __pycache__ *.py[cod] .DS_Store .env .env.* *.pem *.key
+exclude RELEASE_IMPLEMENTATION.txt IMPLEMENTATION_NOTES.txt V2_NOTES.txt

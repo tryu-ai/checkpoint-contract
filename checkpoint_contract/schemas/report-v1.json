@@ -1,0 +1,209 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:checkpoint-contract:report:v1",
+  "title": "Checkpoint contract v1 report",
+  "description": "Structural contract, not authenticity or semantic replay validation. Unknown fields permit extension; configuration keys remain exact for replay.",
+  "type": "object",
+  "required": ["schema", "status"],
+  "properties": {
+    "schema": {"const": "checkpoint-contract/v1"},
+    "status": {"$ref": "#/$defs/status"},
+    "config": {"$ref": "#/$defs/config"},
+    "runs": {"type": "array", "minItems": 1, "maxItems": 101, "items": {"$ref": "#/$defs/run"}},
+    "scope": {"type": "string"},
+    "error": {"$ref": "#/$defs/error"},
+    "provenance": {
+      "type": "object",
+      "properties": {
+        "adapter": {"type": "string"},
+        "python": {"type": "string"},
+        "private_api": {"type": "boolean"},
+        "settings": {"type": "object"},
+        "packages": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "loaded": {"type": "boolean"},
+              "runtime_version": {"type": ["string", "null"]},
+              "distribution_version": {"type": ["string", "null"]},
+              "source": {"$ref": "#/$defs/source"}
+            }
+          }
+        },
+        "checker": {
+          "type": "object",
+          "properties": {
+            "version": {"type": ["string", "null"]},
+            "sources": {"type": "array", "items": {"$ref": "#/$defs/source"}}
+          }
+        }
+      }
+    }
+  },
+  "oneOf": [
+    {"required": ["config", "runs", "scope"], "not": {"required": ["error"]}},
+    {
+      "required": ["error"],
+      "properties": {"status": {"const": "error"}},
+      "not": {"anyOf": [{"required": ["config"]}, {"required": ["runs"]}]}
+    }
+  ],
+  "$defs": {
+    "status": {"enum": ["pass", "fail", "error", "unsupported"]},
+    "phase": {"enum": ["configuration", "baseline", "initial_restore", "scheduled_restore", "before_stop_iteration", "after_stop_iteration", "close"]},
+    "schedule": {"type": "array", "minItems": 1, "maxItems": 100, "items": {"type": "integer", "minimum": 1, "maximum": 1000000}},
+    "id": {"type": ["integer", "string"]},
+    "batch": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/id"}},
+    "batches": {"type": "array", "items": {"$ref": "#/$defs/batch"}},
+    "error": {
+      "type": "object",
+      "required": ["type", "message"],
+      "properties": {
+        "type": {"type": "string", "minLength": 1},
+        "message": {"type": "string"},
+        "phase": {"$ref": "#/$defs/phase"}
+      }
+    },
+    "source": {
+      "type": "object",
+      "required": ["module", "loaded", "sha256"],
+      "properties": {
+        "module": {"type": "string"},
+        "loaded": {"type": "boolean"},
+        "sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "config": {
+      "type": "object",
+      "required": ["adapter", "case", "schedules", "reduction_budget", "generation"],
+      "additionalProperties": false,
+      "properties": {
+        "adapter": {"enum": ["hf-arrow", "torchdata"]},
+        "case": {
+          "type": "object",
+          "required": ["tables", "batch_size", "drop_last"],
+          "additionalProperties": false,
+          "properties": {
+            "tables": {"type": "array", "items": {"type": "array", "items": {"type": "integer"}}},
+            "batch_size": {"type": "integer", "minimum": 1},
+            "drop_last": {"type": "boolean"}
+          }
+        },
+        "schedules": {"type": "array", "minItems": 1, "maxItems": 101, "items": {"$ref": "#/$defs/schedule"}},
+        "reduction_budget": {"type": "integer", "minimum": 1, "maximum": 1000},
+        "generation": {
+          "type": "object",
+          "required": ["seed", "count"],
+          "additionalProperties": false,
+          "properties": {"seed": {"type": "integer"}, "count": {"type": "integer", "minimum": 0, "maximum": 100}}
+        }
+      }
+    },
+    "multiplicities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "count"],
+        "properties": {"id": {"$ref": "#/$defs/id"}, "count": {"type": "integer", "minimum": 1}}
+      }
+    },
+    "failure": {
+      "type": "object",
+      "required": ["failure_class", "phase", "first_divergence", "expected_ids", "actual_ids", "expected_multiplicities", "actual_multiplicities", "observed_stop_iteration"],
+      "properties": {
+        "failure_class": {"enum": ["output_mismatch", "termination_bound"]},
+        "phase": {"$ref": "#/$defs/phase"},
+        "first_divergence": {
+          "type": "object",
+          "required": ["batch", "row_in_batch", "expected_batch", "actual_batch"],
+          "properties": {
+            "batch": {"type": "integer", "minimum": 0},
+            "row_in_batch": {"type": "integer", "minimum": 0},
+            "expected_batch": {"anyOf": [{"$ref": "#/$defs/batch"}, {"type": "null"}]},
+            "actual_batch": {"anyOf": [{"$ref": "#/$defs/batch"}, {"type": "null"}]}
+          }
+        },
+        "expected_ids": {"$ref": "#/$defs/batches"},
+        "actual_ids": {"$ref": "#/$defs/batches"},
+        "expected_multiplicities": {"$ref": "#/$defs/multiplicities"},
+        "actual_multiplicities": {"$ref": "#/$defs/multiplicities"},
+        "observed_stop_iteration": {"type": "boolean"}
+      }
+    },
+    "run": {
+      "type": "object",
+      "required": ["status", "schedule", "checks", "failure", "snapshot_transport", "contract", "bounds", "minimization"],
+      "properties": {
+        "status": {"$ref": "#/$defs/status"},
+        "schedule": {"$ref": "#/$defs/schedule"},
+        "snapshot_transport": {"enum": ["deepcopy", "serializer"]},
+        "reason": {"type": "string"},
+        "error": {"allOf": [{"$ref": "#/$defs/error"}], "required": ["phase"]},
+        "failure": {"anyOf": [{"$ref": "#/$defs/failure"}, {"type": "null"}]},
+        "contract": {
+          "type": "object",
+          "required": ["exact_resume", "exhausted_restore", "reason"],
+          "properties": {
+            "exact_resume": {"type": "boolean"},
+            "exhausted_restore": {"enum": ["empty", "next_epoch", "unsupported"]},
+            "reason": {"type": ["string", "null"]}
+          }
+        },
+        "bounds": {
+          "type": "object",
+          "required": ["current_epoch_calls_per_probe", "next_epoch_calls"],
+          "properties": {
+            "current_epoch_calls_per_probe": {"type": "integer", "minimum": 2},
+            "next_epoch_calls": {"type": "integer", "minimum": 2}
+          }
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["phase", "status"],
+            "properties": {
+              "phase": {"$ref": "#/$defs/phase"},
+              "status": {"enum": ["pass", "fail", "unsupported"]},
+              "reason": {"type": ["string", "null"]}
+            }
+          }
+        },
+        "minimization": {
+          "type": "object",
+          "required": ["status", "schedule", "evaluations"],
+          "properties": {
+            "status": {"enum": ["not_applicable", "1-minimal", "budget_exhausted", "inconclusive"]},
+            "schedule": {"anyOf": [{"$ref": "#/$defs/schedule"}, {"type": "null"}]},
+            "evaluations": {"type": "integer", "minimum": 0, "maximum": 1000},
+            "edits": {"type": "array", "items": {"type": "string"}},
+            "preserved_failure": {
+              "description": "Legacy status/class/phase summary; v2 additionally compares the detached observable fingerprint. This is not causal identity.",
+              "type": "array", "minItems": 3, "maxItems": 3,
+              "prefixItems": [{"const": "fail"}, {"type": "string"}, {"$ref": "#/$defs/phase"}]
+            },
+            "observable_fingerprint": {
+              "description": "Optional v2 extension; absent in v1 reports. Exact nested IDs preserve order, batching and multiplicity. No causal identity guarantee.",
+              "type": "object",
+              "required": ["status", "failure_class", "phase", "expected_ids", "actual_ids", "observed_stop_iteration"],
+              "properties": {
+                "status": {"const": "fail"},
+                "failure_class": {"enum": ["output_mismatch", "termination_bound"]},
+                "phase": {"$ref": "#/$defs/phase"},
+                "expected_ids": {"$ref": "#/$defs/batches"},
+                "actual_ids": {"$ref": "#/$defs/batches"},
+                "observed_stop_iteration": {"type": "boolean"}
+              }
+            }
+          }
+        }
+      },
+      "allOf": [
+        {"if": {"properties": {"status": {"const": "fail"}}}, "then": {"properties": {"failure": {"$ref": "#/$defs/failure"}}}},
+        {"if": {"properties": {"status": {"const": "error"}}}, "then": {"required": ["error"]}},
+        {"if": {"properties": {"status": {"enum": ["pass", "unsupported"]}}}, "then": {"properties": {"failure": {"type": "null"}}}}
+      ]
+    }
+  }
+}
